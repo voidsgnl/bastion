@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/bastion/finding.schema.json",
+  "title": "Bastion Finding",
+  "description": "Normalized finding produced by any scan engine after normalization and verification.",
+  "type": "object",
+  "required": ["id", "scan_id", "asset_id", "title", "category", "severity", "confidence", "status", "evidence", "first_seen", "last_seen"],
+  "properties": {
+    "id": { "type": "string", "description": "Stable finding ID, e.g. f_2210" },
+    "scan_id": { "type": "string" },
+    "asset_id": { "type": "string" },
+    "title": { "type": "string" },
+    "category": {
+      "type": "string",
+      "enum": ["network", "web", "config", "cloud", "container", "code", "external"]
+    },
+    "source_engine": { "type": "string", "description": "e.g. nuclei, openvas, trivy" },
+    "identifiers": {
+      "type": "object",
+      "properties": {
+        "cve": { "type": "array", "items": { "type": "string", "pattern": "^CVE-\\d{4}-\\d{4,}$" } },
+        "cwe": { "type": "array", "items": { "type": "string" } },
+        "engine_rule_id": { "type": "string" }
+      }
+    },
+    "severity": { "type": "string", "enum": ["info", "low", "medium", "high", "critical"] },
+    "confidence": {
+      "type": "string",
+      "enum": ["confirmed", "likely", "unverified"],
+      "description": "Set only by the verification engine."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "fixed", "regressed", "accepted_risk", "false_positive"]
+    },
+    "risk": {
+      "type": "object",
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "cvss_base": { "type": "number", "minimum": 0, "maximum": 10 },
+        "epss": { "type": "number", "minimum": 0, "maximum": 1 },
+        "kev": { "type": "boolean" },
+        "internet_exposed": { "type": "boolean" },
+        "asset_criticality": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "compensating_controls": { "type": "array", "items": { "type": "string" } },
+        "explanation": { "type": "string", "description": "Human-readable reason for the score" }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type", "summary"],
+        "properties": {
+          "type": { "type": "string", "enum": ["http", "banner", "config", "file", "command", "screenshot", "other"] },
+          "summary": { "type": "string" },
+          "blob_ref": { "type": "string", "description": "Reference to object store" }
+        }
+      }
+    },
+    "remediation_group_id": { "type": "string", "description": "Findings sharing a fix share this ID" },
+    "attack_path_ids": { "type": "array", "items": { "type": "string" } },
+    "first_seen": { "type": "string", "format": "date-time" },
+    "last_seen": { "type": "string", "format": "date-time" },
+    "tags": { "type": "array", "items": { "type": "string" } }
+  }
+}

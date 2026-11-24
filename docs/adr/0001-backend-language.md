@@ -1,6 +1,6 @@
 # 0001 Backend language
 
-Status: Open
+Status: Accepted
 
 ## Context
 
@@ -15,7 +15,10 @@ The console backend and scan workers need a language. See [07 Architecture](../0
 
 ## Decision
 
-Not decided.
+Go is accepted for the first implementation of both the console backend and scan
+worker. It provides static binaries, straightforward concurrency, and small
+container images. FastAPI remains available for isolated integrations if a later
+prototype proves Go inappropriate.
 
 ## Consequences
 

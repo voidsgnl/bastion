@@ -3,4 +3,121 @@ info:
   title: Bastion API
   version: 0.0.0
   description: Stub. Endpoints are added in Phase 1.
-paths: {}
+paths:
+  /health:
+    get:
+      responses:
+        "200":
+          description: Server is healthy
+  /api/v1/targets:
+    get:
+      responses:
+        "200":
+          description: Targets
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type, value]
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                  enum: [cidr, domain, url, repository, cloud_account]
+                value:
+                  type: string
+      responses:
+        "201":
+          description: Target created
+        "400":
+          description: Invalid target
+  /api/v1/targets/{target_id}/attestation:
+    post:
+      parameters:
+        - name: target_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [statement]
+              properties:
+                statement:
+                  type: string
+      responses:
+        "200":
+          description: Authorization attestation recorded
+        "400":
+          description: Attestation statement is required
+        "404":
+          description: Target not found
+  /api/v1/scans:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_id]
+              properties:
+                target_id:
+                  type: string
+                profile:
+                  type: string
+                  enum: [safe, quick, full, web]
+      responses:
+        "201":
+          description: Fixture scan completed
+        "403":
+          description: Target is not authorized
+        "404":
+          description: Target not found
+  /api/v1/scans/{scan_id}:
+    get:
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Scan status
+        "404":
+          description: Scan not found
+  /api/v1/scans/{scan_id}/findings:
+    get:
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Findings for the scan
+        "404":
+          description: Scan not found
+  /api/v1/findings:
+    get:
+      parameters:
+        - name: scan_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Findings for the scan
+        "400":
+          description: Missing scan_id

@@ -1,0 +1,15 @@
+{
+  "version": 0,
+  "note": "Stub. Copy full tool definitions from docs/06-mcp-server.md.",
+  "tools": [
+    { "name": "list_targets", "phase": 1 },
+    { "name": "start_scan", "phase": 1 },
+    { "name": "get_scan_status", "phase": 1 },
+    { "name": "get_findings", "phase": 1 },
+    { "name": "explain_finding", "phase": 1 },
+    { "name": "retest", "phase": 1 },
+    { "name": "get_remediation", "phase": 2 },
+    { "name": "compare_scans", "phase": 2 },
+    { "name": "export_report", "phase": 2 }
+  ]
+}

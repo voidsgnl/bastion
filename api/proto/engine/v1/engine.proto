@@ -1,0 +1,4 @@
+syntax = "proto3";
+
+// Console <-> engine contract. Stub: services and messages are added in Phase 1.
+package bastion.engine.v1;

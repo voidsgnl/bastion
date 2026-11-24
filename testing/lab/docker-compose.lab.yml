@@ -1,0 +1,3 @@
+# Stub. Deliberately vulnerable targets (for example Metasploitable, DVWA) for false-positive benchmarks.
+# Run only on an isolated network.
+services: {}

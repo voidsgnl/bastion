@@ -1,0 +1,11 @@
+.env
+*.pem
+*.key
+*.log
+.DS_Store
+node_modules/
+dist/
+bin/
+data/
+evidence/
+vault/

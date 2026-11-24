@@ -2,11 +2,13 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/voidsgnl/bastion/server/internal/engine"
 	"github.com/voidsgnl/bastion/server/internal/store"
 )
 
@@ -20,6 +22,12 @@ func post(t *testing.T, handler http.Handler, path string, body any) *httptest.R
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	return response
+}
+
+type failingRunner struct{}
+
+func (failingRunner) Run(context.Context, store.Scan, store.Target) ([]store.Finding, error) {
+	return nil, context.DeadlineExceeded
 }
 
 func TestAuthorizedTargetCompletesFixtureScan(t *testing.T) {
@@ -58,6 +66,19 @@ func TestAuthorizedTargetCompletesFixtureScan(t *testing.T) {
 	}
 	if scan.Status != "complete" {
 		t.Fatalf("scan status = %q", scan.Status)
+	}
+	findingsResponse := httptest.NewRecorder()
+	handler.ServeHTTP(findingsResponse, httptest.NewRequest(http.MethodGet,
+		"/api/v1/scans/"+scan.ID+"/findings", nil))
+	var findings []store.Finding
+	if err := json.Unmarshal(findingsResponse.Body.Bytes(), &findings); err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 || findings[0].SourceEngine != "fixture" {
+		t.Fatalf("fixture findings not returned: %#v", findings)
+	}
+	if findings[0].Confidence != "unverified" {
+		t.Fatalf("fixture confidence = %q, want unverified", findings[0].Confidence)
 	}
 }
 
@@ -158,3 +179,102 @@ func TestScanFindingsRoute(t *testing.T) {
 		t.Fatalf("findings = %d, want 1", len(findings))
 	}
 }
+
+func TestRunnerFailureIsReportedAndRecorded(t *testing.T) {
+	handler := NewHandlerWithRunner(store.NewMemory(), failingRunner{})
+	targetResponse := post(t, handler, "/api/v1/targets", map[string]string{
+		"name": "lab", "type": "domain", "value": "lab.example",
+	})
+	var target store.Target
+	if err := json.Unmarshal(targetResponse.Body.Bytes(), &target); err != nil {
+		t.Fatal(err)
+	}
+	attestResponse := post(t, handler, "/api/v1/targets/"+target.ID+"/attestation", map[string]string{
+		"statement": "Authorized test target.",
+	})
+	if attestResponse.Code != http.StatusOK {
+		t.Fatalf("attest target status = %d", attestResponse.Code)
+	}
+
+	response := post(t, handler, "/api/v1/scans", map[string]string{
+		"target_id": target.ID, "profile": "safe",
+	})
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusInternalServerError)
+	}
+	var body struct {
+		ScanID string `json:"scan_id"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	scanResponse := httptest.NewRecorder()
+	handler.ServeHTTP(scanResponse, httptest.NewRequest(http.MethodGet, "/api/v1/scans/"+body.ScanID, nil))
+	var scan store.Scan
+	if err := json.Unmarshal(scanResponse.Body.Bytes(), &scan); err != nil {
+		t.Fatal(err)
+	}
+	if scan.Status != "failed" {
+		t.Fatalf("scan status = %q, want failed", scan.Status)
+	}
+}
+
+type fakeNmapExecutor struct {
+	output []byte
+	called bool
+}
+
+func (e *fakeNmapExecutor) Run(_ context.Context, _ string, _ ...string) ([]byte, error) {
+	e.called = true
+	return e.output, nil
+}
+
+func TestNmapLabRunnerCompletesAPIFlowWithoutNetworkProbe(t *testing.T) {
+	executor := &fakeNmapExecutor{output: []byte(`<nmaprun><host><ports><port protocol="tcp" portid="18080"><state state="open"/></port></ports></host></nmaprun>`)}
+	runner := engine.NmapRunner{Executor: executor}
+	handler := NewHandlerWithRunner(store.NewMemory(), runner)
+
+	targetResponse := post(t, handler, "/api/v1/targets", map[string]string{
+		"name": "local lab", "type": "cidr", "value": "127.0.0.1/32",
+	})
+	var target store.Target
+	if err := json.Unmarshal(targetResponse.Body.Bytes(), &target); err != nil {
+		t.Fatal(err)
+	}
+	attestationResponse := post(t, handler, "/api/v1/targets/"+target.ID+"/attestation", map[string]string{
+		"statement": "This is my loopback lab.",
+	})
+	if attestationResponse.Code != http.StatusOK {
+		t.Fatalf("attestation status = %d", attestationResponse.Code)
+	}
+
+	scanResponse := post(t, handler, "/api/v1/scans", map[string]string{
+		"target_id": target.ID, "profile": "safe",
+	})
+	if scanResponse.Code != http.StatusCreated {
+		t.Fatalf("scan status = %d: %s", scanResponse.Code, scanResponse.Body.String())
+	}
+	if !executor.called {
+		t.Fatal("expected Nmap executor to be called")
+	}
+	var scan store.Scan
+	if err := json.Unmarshal(scanResponse.Body.Bytes(), &scan); err != nil {
+		t.Fatal(err)
+	}
+
+	findingsResponse := httptest.NewRecorder()
+	handler.ServeHTTP(findingsResponse, httptest.NewRequest(http.MethodGet,
+		"/api/v1/scans/"+scan.ID+"/findings", nil))
+	var findings []store.Finding
+	if err := json.Unmarshal(findingsResponse.Body.Bytes(), &findings); err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 || findings[0].SourceEngine != "nmap" {
+		t.Fatalf("normalized findings = %#v", findings)
+	}
+	if findings[0].Severity != "info" {
+		t.Fatalf("severity = %q, want info", findings[0].Severity)
+	}
+}
+
+var _ engine.Runner = failingRunner{}

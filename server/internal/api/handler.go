@@ -5,18 +5,24 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/voidsgnl/bastion/server/internal/engine"
 	"github.com/voidsgnl/bastion/server/internal/scope"
 	"github.com/voidsgnl/bastion/server/internal/store"
 )
 
 type Handler struct {
 	store  *store.Memory
+	runner engine.Runner
 	mux    *http.ServeMux
 	static http.Handler
 }
 
 func NewHandler(memory *store.Memory) *Handler {
-	h := &Handler{store: memory, mux: http.NewServeMux()}
+	return NewHandlerWithRunner(memory, engine.FixtureRunner{})
+}
+
+func NewHandlerWithRunner(memory *store.Memory, runner engine.Runner) *Handler {
+	h := &Handler{store: memory, runner: runner, mux: http.NewServeMux()}
 	h.mux.HandleFunc("GET /health", h.health)
 	h.mux.HandleFunc("GET /api/v1/targets", h.listTargets)
 	h.mux.HandleFunc("POST /api/v1/targets", h.createTarget)
@@ -128,7 +134,28 @@ func (h *Handler) createScan(w http.ResponseWriter, r *http.Request) {
 	if input.Profile == "" {
 		input.Profile = "safe"
 	}
-	writeJSON(w, http.StatusCreated, h.store.CreateScan(target, input.Profile))
+	scan := h.store.CreateScan(target, input.Profile)
+	findings, err := h.runner.Run(r.Context(), scan, target)
+	if err != nil {
+		if failErr := h.store.FailScan(scan.ID); failErr != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{
+				"error": "scan failed and its status could not be recorded",
+			})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error":   "scan runner failed",
+			"scan_id": scan.ID,
+			"details": err.Error(),
+		})
+		return
+	}
+	scan, err = h.store.CompleteScan(scan.ID, findings)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not complete scan"})
+		return
+	}
+	writeJSON(w, http.StatusCreated, scan)
 }
 
 func (h *Handler) getScan(w http.ResponseWriter, r *http.Request) {

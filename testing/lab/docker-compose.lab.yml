@@ -1,3 +1,5 @@
-# Stub. Deliberately vulnerable targets (for example Metasploitable, DVWA) for false-positive benchmarks.
-# Run only on an isolated network.
-services: {}
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:18080:80"

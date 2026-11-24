@@ -27,18 +27,19 @@ type Scan struct {
 }
 
 type Finding struct {
-	ID         string     `json:"id"`
-	ScanID     string     `json:"scan_id"`
-	AssetID    string     `json:"asset_id"`
-	Title      string     `json:"title"`
-	Category   string     `json:"category"`
-	Severity   string     `json:"severity"`
-	Confidence string     `json:"confidence"`
-	Status     string     `json:"status"`
-	Evidence   []Evidence `json:"evidence"`
-	Risk       Risk       `json:"risk"`
-	FirstSeen  time.Time  `json:"first_seen"`
-	LastSeen   time.Time  `json:"last_seen"`
+	ID           string     `json:"id"`
+	ScanID       string     `json:"scan_id"`
+	AssetID      string     `json:"asset_id"`
+	SourceEngine string     `json:"source_engine,omitempty"`
+	Title        string     `json:"title"`
+	Category     string     `json:"category"`
+	Severity     string     `json:"severity"`
+	Confidence   string     `json:"confidence"`
+	Status       string     `json:"status"`
+	Evidence     []Evidence `json:"evidence"`
+	Risk         Risk       `json:"risk"`
+	FirstSeen    time.Time  `json:"first_seen"`
+	LastSeen     time.Time  `json:"last_seen"`
 }
 
 type Evidence struct {
@@ -121,35 +122,37 @@ func (m *Memory) CreateScan(target Target, profile string) Scan {
 		ID:        m.next("s"),
 		TargetID:  target.ID,
 		Profile:   profile,
-		Status:    "complete",
+		Status:    "running",
 		CreatedAt: time.Now().UTC(),
 	}
 	m.scans[scan.ID] = scan
-
-	now := time.Now().UTC()
-	m.findings[scan.ID] = []Finding{
-		{
-			ID:         "f_" + scan.ID,
-			ScanID:     scan.ID,
-			AssetID:    "asset_" + target.ID,
-			Title:      "Legacy SSH configuration exposes outdated cryptography",
-			Category:   "network",
-			Severity:   "high",
-			Confidence: "likely",
-			Status:     "open",
-			Evidence: []Evidence{{
-				Type:    "banner",
-				Summary: "SSH service reported an implementation associated with weak legacy negotiation.",
-			}},
-			Risk: Risk{
-				Score:       82,
-				Explanation: "Internet-facing network service with a high-impact SSH downgrade risk.",
-			},
-			FirstSeen: now,
-			LastSeen:  now,
-		},
-	}
+	m.findings[scan.ID] = []Finding{}
 	return scan
+}
+
+func (m *Memory) CompleteScan(id string, findings []Finding) (Scan, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	scan, ok := m.scans[id]
+	if !ok {
+		return Scan{}, ErrNotFound
+	}
+	scan.Status = "complete"
+	m.scans[id] = scan
+	m.findings[id] = append([]Finding(nil), findings...)
+	return scan, nil
+}
+
+func (m *Memory) FailScan(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	scan, ok := m.scans[id]
+	if !ok {
+		return ErrNotFound
+	}
+	scan.Status = "failed"
+	m.scans[id] = scan
+	return nil
 }
 
 func (m *Memory) GetScan(id string) (Scan, error) {

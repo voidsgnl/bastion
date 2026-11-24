@@ -12,7 +12,7 @@ async function api(path, options) {
 newScanButton?.addEventListener("click", async (event) => {
   event.preventDefault();
   const authorizationStatement =
-    "I confirm I own or have explicit authorization to assess 10.0.0.0/24.";
+    "I confirm this local lab scan is limited to 127.0.0.1/32.";
   if (!window.confirm(`${authorizationStatement}\n\nContinue and record this attestation?`)) {
     return;
   }
@@ -25,7 +25,7 @@ newScanButton?.addEventListener("click", async (event) => {
       body: JSON.stringify({
         name: "Demo lab",
         type: "cidr",
-        value: "10.0.0.0/24",
+        value: "127.0.0.1/32",
       }),
     });
     await api(`/api/v1/targets/${encodeURIComponent(target.id)}/attestation`, {
@@ -55,6 +55,10 @@ newScanButton?.addEventListener("click", async (event) => {
       analyst.textContent = findings[0]
         ? `${findings[0].title}. Risk score: ${findings[0].risk.score}.`
         : "The scan completed without findings.";
+    }
+    const samplePill = document.querySelector(".head .pill");
+    if (samplePill) {
+      samplePill.textContent = "Sample dashboard - scan complete";
     }
     newScanButton.textContent = "Scan complete";
   } catch (error) {

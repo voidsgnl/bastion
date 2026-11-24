@@ -16,6 +16,9 @@ A vulnerability scanner holds powerful credentials and network reach, and can be
 - Destructive checks (level 3) do not exist
 - Per-target rate limits, concurrency caps, and blackout windows
 - A "safe mode" profile for production systems
+- The initial Nmap lab runner is opt-in and limited to `127.0.0.1/32`, TCP port
+  18080, and fixed TCP-connect probe arguments; it does not run vulnerability
+  scripts or accept caller-controlled command options.
 
 ## 3. Platform security
 

@@ -55,7 +55,7 @@ paths:
                   type: string
       responses:
         "200":
-          description: Authorization attestation recorded
+          description: Authorization attestation recorded (prototype statement only)
         "400":
           description: Attestation statement is required
         "404":
@@ -77,11 +77,13 @@ paths:
                   enum: [safe, quick, full, web]
       responses:
         "201":
-          description: Fixture scan completed
+          description: Scan runner completed
         "403":
           description: Target is not authorized
         "404":
           description: Target not found
+        "500":
+          description: Scan runner failed; scan status is marked failed
   /api/v1/scans/{scan_id}:
     get:
       parameters:

@@ -76,4 +76,4 @@ Goal: clean, fast, and understandable by someone who has never used a scanner. N
 
 A clickable prototype of Home, Results, and Finding detail is planned for Phase 0 (see [roadmap](08-roadmap.md)).
 
-A first-pass static design of these three screens is in [design/ui](../design/ui/README.md). It uses sample data and is not yet clickable.
+A first-pass UI for these three screens is in [ui](../ui/README.md): plain HTML and CSS, open `ui/index.html` in a browser. It uses sample data, and only the navigation between the three screens works so far.

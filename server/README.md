@@ -10,18 +10,37 @@ vertical slice:
 - scan status and normalized finding APIs
 - static UI serving
 
-The attestation is a prototype record only; the server does not authenticate the
-caller or independently verify ownership. Real scanning must not be enabled until
-identity, authorization proof, and engine-side scope enforcement are implemented.
+The backend now requires a bootstrapped operator login for API access. This is a
+single-operator prototype session, not multi-user identity or RBAC. Target
+attestation remains a separate scope control: login identifies the operator but
+does not prove ownership of every target. Attestation is still a recorded
+statement, not independent ownership verification. The Nmap runner independently
+restricts itself to the local lab target.
 
 ## Run
 
 ```bash
 cd server
+export BASTION_ADMIN_PASSWORD='use-a-unique-password-of-at-least-12-characters'
 go run ./cmd/bastion-server -ui-dir ../ui
 ```
 
-Open <http://localhost:8080>.
+The default listener is `127.0.0.1:8080`. Set `BASTION_ADMIN_USER` to change the
+default username (`admin`). The server refuses to start without the password.
+For non-loopback listening, provide `-tls-cert` and `-tls-key`; plaintext
+non-loopback listeners are rejected.
+
+Log in to the API to receive an HttpOnly, SameSite=Strict session cookie:
+
+```bash
+curl -i -c bastion-cookies.txt -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"YOUR_PASSWORD"}' \
+  http://127.0.0.1:8080/api/v1/auth/login
+```
+
+Use that cookie for API requests. `POST /api/v1/auth/logout` revokes the session;
+`GET /api/v1/auth/me` returns the current operator. Sessions expire after 12
+hours and are cleared when the server restarts. `/health` remains public.
 
 The default `fixture` engine is synthetic and performs no network activity. To use
 the restricted Nmap lab runner, follow [the local lab instructions](../testing/lab/README.md)

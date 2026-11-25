@@ -20,7 +20,7 @@ func (FixtureRunner) Run(ctx context.Context, scan store.Scan, target store.Targ
 
 	now := time.Now().UTC()
 	return []store.Finding{{
-		ID:           "f_" + scan.ID,
+		ID:           "f_fixture_" + target.ID,
 		ScanID:       scan.ID,
 		AssetID:      "asset_" + target.ID,
 		SourceEngine: "fixture",

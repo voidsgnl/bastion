@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/netip"
+	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/voidsgnl/bastion/server/internal/api"
 	"github.com/voidsgnl/bastion/server/internal/engine"
@@ -18,6 +21,8 @@ func main() {
 	addr := flag.String("addr", "", "HTTP listen address")
 	uiDir := flag.String("ui-dir", "../ui", "directory containing the static UI")
 	engineMode := flag.String("engine", "fixture", "scan runner: fixture or nmap-lab")
+	storeMode := flag.String("store", "memory", "data store: memory or postgres")
+	databaseURL := flag.String("database-url", os.Getenv("BASTION_DATABASE_URL"), "PostgreSQL connection URL")
 	flag.Parse()
 	listenAddress, err := resolveListenAddress(*addr, *engineMode)
 	if err != nil {
@@ -34,7 +39,29 @@ func main() {
 	default:
 		log.Fatalf("unsupported engine %q (choose fixture or nmap-lab)", *engineMode)
 	}
-	handler := api.NewHandlerWithRunner(memory, runner)
+
+	var repository store.Repository = memory
+	var postgres *store.Postgres
+	if *storeMode == "postgres" {
+		if *databaseURL == "" {
+			log.Fatal("PostgreSQL store requires -database-url or BASTION_DATABASE_URL")
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		postgres, err = store.NewPostgres(ctx, *databaseURL)
+		cancel()
+		if err != nil {
+			log.Fatalf("initialize PostgreSQL store: %v", err)
+		}
+		defer func() {
+			if err := postgres.Close(); err != nil {
+				log.Printf("close PostgreSQL store: %v", err)
+			}
+		}()
+		repository = postgres
+	} else if *storeMode != "memory" {
+		log.Fatalf("unsupported store %q (choose memory or postgres)", *storeMode)
+	}
+	handler := api.NewHandlerWithRepository(repository, runner)
 
 	uiPath, err := filepath.Abs(*uiDir)
 	if err != nil {

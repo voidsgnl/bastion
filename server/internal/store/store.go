@@ -1,12 +1,9 @@
 package store
 
 import (
-	"errors"
 	"sync"
 	"time"
 )
-
-var ErrNotFound = errors.New("not found")
 
 type Target struct {
 	ID                       string    `json:"id"`
@@ -19,11 +16,12 @@ type Target struct {
 }
 
 type Scan struct {
-	ID        string    `json:"id"`
-	TargetID  string    `json:"target_id"`
-	Profile   string    `json:"profile"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          string    `json:"id"`
+	TargetID    string    `json:"target_id"`
+	Profile     string    `json:"profile"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+	CompletedAt time.Time `json:"completed_at,omitempty"`
 }
 
 type Finding struct {
@@ -57,7 +55,6 @@ type Memory struct {
 	targets  map[string]Target
 	scans    map[string]Scan
 	findings map[string][]Finding
-	seq      int
 }
 
 func NewMemory() *Memory {
@@ -68,27 +65,26 @@ func NewMemory() *Memory {
 	}
 }
 
-func (m *Memory) next(prefix string) string {
-	m.seq++
-	return prefix + "_" + time.Now().UTC().Format("150405") + string(rune('a'+m.seq%26))
-}
-
-func (m *Memory) CreateTarget(target Target) Target {
+func (m *Memory) CreateTarget(target Target) (Target, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	target.ID = m.next("t")
+	id, err := newID("t")
+	if err != nil {
+		return Target{}, err
+	}
+	target.ID = id
 	m.targets[target.ID] = target
-	return target
+	return target, nil
 }
 
-func (m *Memory) ListTargets() []Target {
+func (m *Memory) ListTargets() ([]Target, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	targets := make([]Target, 0, len(m.targets))
 	for _, target := range m.targets {
 		targets = append(targets, target)
 	}
-	return targets
+	return targets, nil
 }
 
 func (m *Memory) GetTarget(id string) (Target, error) {
@@ -115,11 +111,15 @@ func (m *Memory) AttestTarget(id, statement string) (Target, error) {
 	return target, nil
 }
 
-func (m *Memory) CreateScan(target Target, profile string) Scan {
+func (m *Memory) CreateScan(target Target, profile string) (Scan, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	id, err := newID("s")
+	if err != nil {
+		return Scan{}, err
+	}
 	scan := Scan{
-		ID:        m.next("s"),
+		ID:        id,
 		TargetID:  target.ID,
 		Profile:   profile,
 		Status:    "running",
@@ -127,7 +127,7 @@ func (m *Memory) CreateScan(target Target, profile string) Scan {
 	}
 	m.scans[scan.ID] = scan
 	m.findings[scan.ID] = []Finding{}
-	return scan
+	return scan, nil
 }
 
 func (m *Memory) CompleteScan(id string, findings []Finding) (Scan, error) {
@@ -137,7 +137,27 @@ func (m *Memory) CompleteScan(id string, findings []Finding) (Scan, error) {
 	if !ok {
 		return Scan{}, ErrNotFound
 	}
+	now := time.Now().UTC()
+	for i := range findings {
+		if findings[i].FirstSeen.IsZero() {
+			findings[i].FirstSeen = now
+		}
+		for oldScanID, oldFindings := range m.findings {
+			oldScan := m.scans[oldScanID]
+			if oldScan.TargetID != scan.TargetID {
+				continue
+			}
+			for _, oldFinding := range oldFindings {
+				if oldFinding.ID == findings[i].ID && oldFinding.FirstSeen.Before(findings[i].FirstSeen) {
+					findings[i].FirstSeen = oldFinding.FirstSeen
+				}
+			}
+		}
+		findings[i].ScanID = id
+		findings[i].LastSeen = now
+	}
 	scan.Status = "complete"
+	scan.CompletedAt = now
 	m.scans[id] = scan
 	m.findings[id] = append([]Finding(nil), findings...)
 	return scan, nil
@@ -150,7 +170,11 @@ func (m *Memory) FailScan(id string) error {
 	if !ok {
 		return ErrNotFound
 	}
+	if scan.Status != "running" {
+		return nil
+	}
 	scan.Status = "failed"
+	scan.CompletedAt = time.Now().UTC()
 	m.scans[id] = scan
 	return nil
 }
@@ -165,8 +189,12 @@ func (m *Memory) GetScan(id string) (Scan, error) {
 	return scan, nil
 }
 
-func (m *Memory) Findings(scanID string) []Finding {
+func (m *Memory) Findings(scanID string) ([]Finding, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return append([]Finding(nil), m.findings[scanID]...)
+	findings, ok := m.findings[scanID]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	return append([]Finding(nil), findings...), nil
 }

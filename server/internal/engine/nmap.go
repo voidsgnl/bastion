@@ -130,7 +130,7 @@ func parseNmapXML(output []byte, scan store.Scan, target store.Target) ([]store.
 				continue
 			}
 			findings = append(findings, store.Finding{
-				ID:           fmt.Sprintf("f_%s_tcp_%d", scan.ID, labPort),
+				ID:           fmt.Sprintf("f_nmap_%s_tcp_%d", target.ID, labPort),
 				ScanID:       scan.ID,
 				AssetID:      "asset_" + target.ID,
 				SourceEngine: "nmap",

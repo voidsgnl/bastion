@@ -97,6 +97,48 @@ paths:
           description: Scan status
         "404":
           description: Scan not found
+  /api/v1/scans/{scan_id}/retest:
+    post:
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          schema:
+            type: string
+      description: Starts a new scan of the same authorized target using the safe profile.
+      responses:
+        "201":
+          description: Retest scan created
+        "400":
+          description: Only completed safe-profile scans can be retested
+        "403":
+          description: Target is not authorized
+        "404":
+          description: Scan or target not found
+        "500":
+          description: Retest runner or persistence failed
+  /api/v1/scans/{scan_id}/compare/{other_scan_id}:
+    get:
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          description: Baseline scan
+          schema:
+            type: string
+        - name: other_scan_id
+          in: path
+          required: true
+          description: Current scan
+          schema:
+            type: string
+      responses:
+        "200":
+          description: New, fixed, and unchanged findings by stable finding ID
+        "404":
+          description: Scan not found
+        "409":
+          description: Scans must be complete and belong to the same target
   /api/v1/scans/{scan_id}/findings:
     get:
       parameters:

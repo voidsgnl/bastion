@@ -35,6 +35,21 @@ The Nmap runner only accepts `127.0.0.1/32` with the `safe` profile and probes
 TCP port 18080 using fixed arguments. Nmap must be installed locally. It does not
 perform vulnerability checks.
 
+## Persistent scan history
+
+Copy `.env.example` to `.env`, replace the local development password, and export
+the matching `BASTION_DATABASE_URL` in the shell where the server will run. Start
+PostgreSQL with `make db-up`, then run:
+
+```bash
+make run-postgres
+```
+
+The server applies embedded schema migrations at startup. The database port is
+published only on loopback. `make db-down` stops PostgreSQL without deleting its
+volume. The default `memory` store remains useful for tests and disposable demos;
+it does not survive a restart.
+
 ## Test
 
 ```bash

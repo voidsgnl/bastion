@@ -19,48 +19,39 @@ newScanButton?.addEventListener("click", async (event) => {
   newScanButton.textContent = "Starting...";
 
   try {
-    const target = await api("/api/v1/targets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: "Demo lab",
-        type: "cidr",
-        value: "127.0.0.1/32",
-      }),
-    });
+    const savedTargetId = window.localStorage.getItem("bastion.demoTargetId");
+    const targets = await api("/api/v1/targets");
+    let target = targets.find((item) =>
+      item.id === savedTargetId && item.type === "cidr" && item.value === "127.0.0.1/32",
+    );
+    if (!target) {
+      target = await api("/api/v1/targets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Demo lab",
+          type: "cidr",
+          value: "127.0.0.1/32",
+        }),
+      });
+      window.localStorage.setItem("bastion.demoTargetId", target.id);
+    }
     await api(`/api/v1/targets/${encodeURIComponent(target.id)}/attestation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ statement: authorizationStatement }),
     });
+    const previousScanId = window.localStorage.getItem("bastion.latestScanId");
     const scan = await api("/api/v1/scans", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target_id: target.id, profile: "safe" }),
     });
-    const findings = await api(`/api/v1/findings?scan_id=${encodeURIComponent(scan.id)}`);
-
+    if (previousScanId) {
+      window.localStorage.setItem("bastion.previousScanId", previousScanId);
+    }
     window.localStorage.setItem("bastion.latestScanId", scan.id);
-
-    const recentSection = Array.from(document.querySelectorAll("section.card")).find(
-      (section) => section.querySelector("h2")?.textContent === "Recent scans",
-    );
-    const recent = recentSection?.querySelector("h2");
-    if (recent) {
-      recent.textContent = `${findings.length} finding from the latest scan`;
-    }
-
-    const analyst = document.querySelector("aside .msg");
-    if (analyst) {
-      analyst.textContent = findings[0]
-        ? `${findings[0].title}. Risk score: ${findings[0].risk.score}.`
-        : "The scan completed without findings.";
-    }
-    const samplePill = document.querySelector(".head .pill");
-    if (samplePill) {
-      samplePill.textContent = "Sample dashboard - scan complete";
-    }
-    newScanButton.textContent = "Scan complete";
+    window.location.assign(`results.html?scan_id=${encodeURIComponent(scan.id)}`);
   } catch (error) {
     newScanButton.textContent = "Scan failed";
     window.alert(error.message);

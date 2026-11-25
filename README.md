@@ -4,7 +4,7 @@
 
 Enter a target (IP range, domain, URL, cloud account, or repo), press **Scan**, and get a verified list of problems. Each one comes with a plain-language explanation, an exact fix, and a re-test button. There is no always-on monitoring: it is used like Nexpose or Nessus, with an AI analyst built into every step and an MCP server so any MCP-capable assistant can drive it.
 
-> Status: **planning / documentation phase.** No code yet. See the [roadmap](docs/08-roadmap.md).
+> Status: **early prototype.** Includes a fixture workflow, opt-in loopback-only Nmap lab scan, and optional PostgreSQL-backed scan history. Not production-ready; see the [roadmap](docs/08-roadmap.md).
 
 ## Why Bastion
 

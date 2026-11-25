@@ -6,20 +6,20 @@ Bastion exposes its capabilities through the Model Context Protocol so Claude an
 
 ### Tools
 
-| Tool | Purpose | Notes |
-|---|---|---|
-| `list_targets` | List authorized targets | read-only |
-| `add_target(target, type)` | Add a target and start authorization | returns verification instructions |
-| `start_scan(target_id, profile, options)` | Launch a scan | requires authorized target; intrusive options need human approval |
-| `get_scan_status(scan_id)` | Progress, hosts found, ETA | read-only |
-| `get_findings(scan_id, filters)` | Findings by severity, confidence, asset, tag | read-only, paginated |
-| `explain_finding(finding_id, audience)` | Evidence, impact, context | audience: engineer / manager / auditor |
-| `get_attack_paths(scan_id)` | Chained risks and best chokepoint fix | read-only |
-| `get_remediation(finding_id, format)` | Fix as shell / ansible / powershell / terraform / ticket / pr | format-specific |
-| `retest(finding_id)` | Re-run verification for one finding | safe-level checks only |
-| `compare_scans(scan_a, scan_b)` | New / fixed / regressed | read-only |
-| `export_report(scan_id, type, format)` | executive / technical / compliance; pdf / docx / csv / sarif | returns file reference |
-| `suggest_next_scan(scan_id)` | AI-proposed follow-up scans | proposal only |
+| Tool                                        | Purpose                                                       | Notes                                                             |
+| ------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `list_targets`                            | List authorized targets                                       | read-only                                                         |
+| `add_target(target, type)`                | Add a target and start authorization                          | returns verification instructions                                 |
+| `start_scan(target_id, profile, options)` | Launch a scan                                                 | requires authorized target; intrusive options need human approval |
+| `get_scan_status(scan_id)`                | Progress, hosts found, ETA                                    | read-only                                                         |
+| `get_findings(scan_id, filters)`          | Findings by severity, confidence, asset, tag                  | read-only, paginated                                              |
+| `explain_finding(finding_id, audience)`   | Evidence, impact, context                                     | audience: engineer / manager / auditor                            |
+| `get_attack_paths(scan_id)`               | Chained risks and best chokepoint fix                         | read-only                                                         |
+| `get_remediation(finding_id, format)`     | Fix as shell / ansible / powershell / terraform / ticket / pr | format-specific                                                   |
+| `retest(finding_id)`                      | Re-run verification for one finding                           | safe-level checks only                                            |
+| `compare_scans(scan_a, scan_b)`           | New / fixed / regressed                                       | read-only                                                         |
+| `export_report(scan_id, type, format)`    | executive / technical / compliance; pdf / docx / csv / sarif  | returns file reference                                            |
+| `suggest_next_scan(scan_id)`              | AI-proposed follow-up scans                                   | proposal only                                                     |
 
 ### Resources
 
@@ -52,13 +52,13 @@ Bastion exposes its capabilities through the Model Context Protocol so Claude an
 
 Planned integrations:
 
-| Integration | Use |
-|---|---|
+| Integration            | Use                                          |
+| ---------------------- | -------------------------------------------- |
 | CMDB / asset inventory | Enrich asset owner, criticality, environment |
-| Jira / ServiceNow | Create and sync remediation tickets |
-| Slack / Teams | Notifications and approvals |
-| GitHub / GitLab | Open fix pull requests |
-| Cloud providers | Read-only inventory |
+| Jira / ServiceNow      | Create and sync remediation tickets          |
+| Slack / Teams          | Notifications and approvals                  |
+| GitHub / GitLab        | Open fix pull requests                       |
+| Cloud providers        | Read-only inventory                          |
 
 ## Example session
 
